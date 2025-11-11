@@ -21,16 +21,14 @@ void PerformComputations(const char set_name, const int action_number) {
 }
 
 void RunMultithreaded(const std::vector<std::string> &thread_tasks,
-                      std::map<char, int> &set_action_current_ids) {
+                      std::map<char, int> &set_action_current_ids, std::barrier<> &sync_point) {
     std::list<std::jthread> threads;
 
-    std::barrier sync_point(kThreadCount);
-
-    std::vector<std::vector<std::pair<char, int>>> set_actions(
-        kThreadCount, std::vector<std::pair<char, int>>());
+    std::vector<std::vector<std::pair<char, int> > > set_actions(
+        kThreadCount, std::vector<std::pair<char, int> >());
 
     for (int i = 0; i < kThreadCount; i++) {
-        for (const char &set_name : thread_tasks[i]) {
+        for (const char &set_name: thread_tasks[i]) {
             set_actions[i].emplace_back(set_name,
                                         set_action_current_ids[set_name]++);
         }
@@ -38,7 +36,7 @@ void RunMultithreaded(const std::vector<std::string> &thread_tasks,
 
     for (int thread_i = 0; thread_i < kThreadCount; thread_i++) {
         threads.emplace_back([set_actions, thread_i, &sync_point]() {
-            for (const auto [set_name, action_id] : set_actions[thread_i]) {
+            for (const auto [set_name, action_id]: set_actions[thread_i]) {
                 if (set_name != ' ') {
                     PerformComputations(set_name, action_id);
                 }
@@ -56,18 +54,22 @@ int main() {
 
     std::cout << "Обчислення розпочато\n";
 
+    std::barrier sync_point(kThreadCount);
+
     std::map<char, int> set_action_current_ids;
 
     for (int i = 0; i < 10; i++) {
-        char set_name = 'a' + i;  // convert i from int to char
+        char set_name = 'a' + i; // convert i from int to char
         set_action_current_ids[set_name] = 1;
     }
 
-    std::vector<std::string> thread_tasks = {"aabcdeeffhiijj", "abccdeefghi jj",
-                                             "abccdeffghi jj", "abccdeffghi j ",
-                                             "abcdeeffghi j "};
+    const std::vector<std::string> thread_tasks = {
+        "aabcdeeffhiijj", "abccdeefghi jj",
+        "abccdeffghi jj", "abccdeffghi j ",
+        "abcdeeffghi j "
+    };
 
-    RunMultithreaded(thread_tasks, set_action_current_ids);
+    RunMultithreaded(thread_tasks, set_action_current_ids, sync_point);
 
     std::cout << "Обчислення завершено\n";
 
